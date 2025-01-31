@@ -28,9 +28,12 @@ jobs:
 
       - name: Run tests
         run: |
-          # 如果有测试文件，可以在这里运行
-          python -m unittest discover
+          # 你可以在这里添加单元测试命令
+          # 例如 python -m unittest discover 这会运行项目中的测试文件
+          # 如果你没有测试文件，可以忽略这个步骤
+          echo "Skipping tests, as there are no tests defined"
 
-      - name: Run Flask app (示例)
+      - name: Run Flask app
         run: |
+          # 运行 Flask 应用程序的命令，替换为你实际的启动命令
           python app.py
