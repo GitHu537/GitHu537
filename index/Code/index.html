@@ -1,69 +1,74 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Upload</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload File</title>
+  <style>
+    /* 样式可以根据需要调整 */
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .upload-container {
+      text-align: center;
+    }
+    button {
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    input[type="file"] {
+      display: none;
+    }
+  </style>
 </head>
 <body>
-    <h1>Upload Your Encrypted File</h1>
-    
-    <form id="uploadForm" enctype="multipart/form-data">
-        <label for="file">Select a file to upload:</label>
-        <input type="file" id="file" name="file" required>
+  <div class="upload-container">
+    <h2>Upload Your File</h2>
+    <button id="uploadButton">Select File</button>
+    <input type="file" id="fileInput" />
+    <p id="status"></p>
+  </div>
+
+  <script>
+    // 点击按钮触发文件选择
+    document.getElementById("uploadButton").addEventListener("click", function() {
+      document.getElementById("fileInput").click();
+    });
+
+    // 文件选择后处理
+    document.getElementById("fileInput").addEventListener("change", function() {
+      const file = this.files[0]; // 获取文件
+      if (file) {
+        // 显示上传状态
+        document.getElementById("status").textContent = `Uploading: ${file.name}`;
         
-        <br><br>
-        
-        <label for="username">Enter your username:</label>
-        <input type="text" id="username" name="username" required>
-        
-        <br><br>
-        
-        <button type="submit">Upload File</button>
-    </form>
+        const formData = new FormData();
+        formData.append("file", file);
 
-    <div id="message"></div>
-
-    <script>
-        document.getElementById('uploadForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-
-            const fileInput = document.getElementById('file');
-            const usernameInput = document.getElementById('username');
-            const messageDiv = document.getElementById('message');
-
-            if (!fileInput.files.length || !usernameInput.value.trim()) {
-                messageDiv.textContent = 'Both file and username are required.';
-                return;
-            }
-
-            const file = fileInput.files[0];
-            const username = usernameInput.value.trim();
-
-            // MD5 加密用户名
-            const md5 = CryptoJS.MD5(username).toString();
-
-            // 创建 FormData 对象
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('username', username);
-
-            fetch('/upload', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    messageDiv.textContent = `File uploaded successfully! You can access it via: ${data.downloadUrl}`;
-                } else {
-                    messageDiv.textContent = `Upload failed: ${data.error}`;
-                }
-            })
-            .catch(error => {
-                messageDiv.textContent = `Error: ${error.message}`;
-            });
+        // 替换为你的后端 API URL
+        fetch('https://your-backend-api.com/upload', {
+          method: 'POST',
+          body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+          // 显示成功信息
+          document.getElementById("status").textContent = `Upload successful: ${data.message}`;
+        })
+        .catch(error => {
+          // 显示错误信息
+          document.getElementById("status").textContent = `Upload failed: ${error.message}`;
         });
-    </script>
+      }
+    });
+  </script>
 </body>
 </html>
