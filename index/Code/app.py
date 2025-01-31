@@ -1,57 +1,43 @@
-from flask import Flask, send_file, abort
-from Crypto.Cipher import AES
-import requests
-from io import BytesIO
-import hashlib
+from flask import Flask, request, jsonify
 import os
+import hashlib
+from upload_to_github import upload_to_github
 
 app = Flask(__name__)
 
-# 从 GitHub Secrets 获取密钥（环境变量中配置）
-SECRET_KEY = os.environ.get('ENCRYPTION_KEY')  # 例如 'mysecretkey12345'
-
-# 解密函数
-def decrypt_file(encrypted_data, key):
-    """解密文件"""
-    nonce, tag, ciphertext = encrypted_data[:16], encrypted_data[16:32], encrypted_data[32:]
-    cipher = AES.new(key.encode('utf-8'), AES.MODE_EAX, nonce=nonce)
+@app.route('/upload', methods=['POST'])
+def upload_file():
     try:
-        plaintext = cipher.decrypt_and_verify(ciphertext, tag)
-    except ValueError:
-        raise ValueError("Decryption failed or data is corrupted.")
-    return plaintext
+        # 获取上传的文件和用户名
+        file = request.files.get('file')
+        username = request.form.get('username')
 
-# 从 GitHub 获取加密文件的内容
-def fetch_encrypted_file_from_github(user_md5, file_category, filename):
-    """从 GitHub 仓库下载加密文件"""
-    # 构造文件的 GitHub URL
-    github_url = f'https://raw.githubusercontent.com/username/repository/main/UserFiles/Files/{user_md5}/{file_category}/{filename}.enc'
-    response = requests.get(github_url)
-    
-    if response.status_code == 200:
-        return response.content
-    else:
-        raise Exception("Failed to fetch file from GitHub.")
+        if not file or not username:
+            return jsonify({'success': False, 'error': 'File and username are required'}), 400
 
-# 处理文件解密并提供下载
-@app.route('/download/<username>/<file_category>/<filename>', methods=['GET'])
-def download_file(username, file_category, filename):
-    """下载解密文件"""
-    try:
-        # 计算用户名的 MD5 值
-        user_md5 = hashlib.md5(username.encode('utf-8')).hexdigest()
+        # MD5 加密用户名
+        user_md5 = hashlib.md5(username.encode()).hexdigest()
 
-        # 获取加密文件数据
-        encrypted_data = fetch_encrypted_file_from_github(user_md5, file_category, filename)
+        # 保存文件到临时路径
+        file_path = f'./tmp/{file.filename}'
+        file.save(file_path)
 
-        # 解密文件
-        decrypted_data = decrypt_file(encrypted_data, SECRET_KEY)
-        
-        # 返回解密后的文件作为响应
-        return send_file(BytesIO(decrypted_data), as_attachment=True, download_name=filename)
-    
+        # 设置 GitHub Token
+        token = os.getenv('GITHUB_TOKEN')  # 从环境变量中获取 GitHub Token
+
+        # 调用上传至 GitHub 的函数
+        response_status, response_text = upload_to_github(file_path, user_md5, '未分类', file.filename, token)
+        if response_status == 201:
+            download_url = f'https://raw.githubusercontent.com/{os.getenv("GITHUB_USERNAME")}/{os.getenv("GITHUB_REPO")}/main/UserFiles/Files/{user_md5}/未分类/{file.filename}'
+            return jsonify({'success': True, 'downloadUrl': download_url})
+
+        else:
+            return jsonify({'success': False, 'error': f"Upload failed: {response_text}"}), 500
+
     except Exception as e:
-        return f"Error: {str(e)}", 500
+        # 记录详细错误信息
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)
