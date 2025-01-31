@@ -3,34 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Upload</title>
+    <title>File Upload and Query</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Upload Your File</h1>
-        <form id="upload-form">
-            <label for="username">Username (MD5):</label>
-            <input type="text" id="username" required>
-            
-            <label for="file">Select File:</label>
-            <input type="file" id="file" required>
-            
-            <label for="category">Category:</label>
-            <select id="category">
-                <option value="video">Video</option>
-                <option value="audio">Audio</option>
-                <option value="document">Document</option>
-                <option value="compressed">Compressed</option>
-            </select>
+    <header>
+        <h1>File Upload and Query System</h1>
+    </header>
 
-            <label for="encrypt">Encrypt Upload:</label>
-            <input type="checkbox" id="encrypt">
+    <main>
+        <!-- 文件上传部分 -->
+        <section id="file-upload-section">
+            <h2>Upload File</h2>
+            <form id="upload-form">
+                <label for="username">Username (MD5):</label>
+                <input type="text" id="username" name="username" required>
 
-            <button type="submit">Upload</button>
-        </form>
-        <div id="result"></div>
-    </div>
+                <label for="category">File Category:</label>
+                <select id="category" name="category">
+                    <option value="videos">Videos</option>
+                    <option value="audio">Audio</option>
+                    <option value="documents">Documents</option>
+                    <option value="compress">Compressed Files</option>
+                </select>
+
+                <label for="file">Choose File:</label>
+                <input type="file" id="file" name="file" required>
+
+                <label for="encrypt">Encrypt File:</label>
+                <input type="checkbox" id="encrypt" name="encrypt">
+
+                <button type="submit">Upload</button>
+            </form>
+        </section>
+
+        <!-- 文件查询部分 -->
+        <section id="file-query-section">
+            <h2>Query Files</h2>
+            <form id="query-form">
+                <label for="query-username">Username (MD5):</label>
+                <input type="text" id="query-username" name="username" required>
+                <button type="submit">Query</button>
+            </form>
+
+            <div id="file-list">
+                <!-- 文件信息展示区 -->
+            </div>
+        </section>
+    </main>
 
     <script src="script.js"></script>
 </body>
