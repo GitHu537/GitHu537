@@ -1,78 +1,68 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>文件上传和下载</title>
+    <title>File Upload</title>
 </head>
 <body>
-    <h1>文件上传和下载</h1>
-
-    <!-- 上传表单 -->
-    <h2>上传文件</h2>
+    <h1>Upload Your Encrypted File</h1>
+    
     <form id="uploadForm" enctype="multipart/form-data">
-        <label for="username">用户名:</label>
-        <input type="text" id="username" name="username" required maxlength="32" /><br/><br/>
-
-        <label for="file">选择文件:</label>
-        <input type="file" id="file" name="file" required /><br/><br/>
-
-        <button type="submit">上传文件</button>
+        <label for="file">Select a file to upload:</label>
+        <input type="file" id="file" name="file" required>
+        
+        <br><br>
+        
+        <label for="username">Enter your username:</label>
+        <input type="text" id="username" name="username" required>
+        
+        <br><br>
+        
+        <button type="submit">Upload File</button>
     </form>
 
-    <hr/>
-
-    <!-- 下载表单 -->
-    <h2>下载文件</h2>
-    <form id="downloadForm">
-        <label for="downloadUsername">用户名:</label>
-        <input type="text" id="downloadUsername" required maxlength="32" /><br/><br/>
-
-        <label for="fileCategory">文件分类:</label>
-        <select id="fileCategory" name="fileCategory">
-            <option value="视频">视频</option>
-            <option value="图片">图片</option>
-            <option value="文档">文档</option>
-            <option value="扩展">扩展</option>
-            <option value="音频">音频</option>
-        </select><br/><br/>
-
-        <label for="filename">文件名:</label>
-        <input type="text" id="filename" required /><br/><br/>
-
-        <button type="submit">下载文件</button>
-    </form>
+    <div id="message"></div>
 
     <script>
-        // 上传文件处理
-        document.getElementById('uploadForm').addEventListener('submit', function(e) {
-            e.preventDefault();
+        document.getElementById('uploadForm').addEventListener('submit', function(event) {
+            event.preventDefault();
 
-            let formData = new FormData();
-            formData.append("username", document.getElementById('username').value);
-            formData.append("file", document.getElementById('file').files[0]);
+            const fileInput = document.getElementById('file');
+            const usernameInput = document.getElementById('username');
+            const messageDiv = document.getElementById('message');
+
+            if (!fileInput.files.length || !usernameInput.value.trim()) {
+                messageDiv.textContent = 'Both file and username are required.';
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const username = usernameInput.value.trim();
+
+            // MD5 加密用户名
+            const md5 = CryptoJS.MD5(username).toString();
+
+            // 创建 FormData 对象
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('username', username);
 
             fetch('/upload', {
                 method: 'POST',
                 body: formData
             })
             .then(response => response.json())
-            .then(data => alert('上传成功！'))
-            .catch(error => alert('上传失败：' + error.message));
-        });
-
-        // 下载文件处理
-        document.getElementById('downloadForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            let username = document.getElementById('downloadUsername').value;
-            let category = document.getElementById('fileCategory').value;
-            let filename = document.getElementById('filename').value;
-
-            // 构造下载链接
-            let downloadUrl = `/download/${username}/${category}/${filename}`;
-
-            window.location.href = downloadUrl;
+            .then(data => {
+                if (data.success) {
+                    messageDiv.textContent = `File uploaded successfully! You can access it via: ${data.downloadUrl}`;
+                } else {
+                    messageDiv.textContent = `Upload failed: ${data.error}`;
+                }
+            })
+            .catch(error => {
+                messageDiv.textContent = `Error: ${error.message}`;
+            });
         });
     </script>
 </body>
