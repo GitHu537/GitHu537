@@ -1,20 +1,22 @@
-name: Upload Files to GitHub
+name: Python Application
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  upload:
+  install_dependencies_and_run:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Set up Python
+      - name: Set up Python 3.x
         uses: actions/setup-python@v2
         with:
           python-version: '3.x'
@@ -22,18 +24,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests Flask pycryptodome
+          pip install -r requirements.txt
 
-      - name: Run Flask App and Log Errors
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run Flask app
         run: |
-          python -c "
-import os
-from app import app
-try:
-    app.run(host='0.0.0.0', port=5000)
-except Exception as e:
-    print(f'Error: {str(e)}')
-    exit(1)  # Exit with an error code to mark the job as failed
-          "
+          python app.py
