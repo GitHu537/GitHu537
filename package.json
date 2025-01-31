@@ -1,0 +1,29 @@
+{
+  "name": "file-upload-project",
+  "version": "1.0.0",
+  "description": "一个安全的文件上传项目，支持加密和直链生成。",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index/code/backend/app.js",        # 启动后端应用
+    "dev": "nodemon index/code/backend/app.js",       # 启动并监控后端开发环境
+    "build": "webpack --config webpack.config.js",    # 构建前端代码
+    "test": "jest"                                   # 运行测试
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "multer": "^1.4.2",
+    "crypto": "^1.0.1",
+    "jsonwebtoken": "^8.5.1",
+    "dotenv": "^10.0.0",
+    "path": "^0.12.7",
+    "fs-extra": "^10.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.15",
+    "jest": "^27.4.5",
+    "webpack": "^5.51.1",
+    "webpack-cli": "^4.8.0"
+  },
+  "author": "Your Name",
+  "license": "MIT"
+}
