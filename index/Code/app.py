@@ -1,43 +1,38 @@
-from flask import Flask, request, jsonify
 import os
-import hashlib
-from upload_to_github import upload_to_github
+from flask import Flask, request, jsonify
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
+# 设置文件上传目录
+UPLOAD_FOLDER = 'uploads'  # 设置文件存储的文件夹，当前目录下的 uploads 文件夹
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'txt', 'pdf', 'mp4'}  # 可上传的文件类型
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# 检查文件扩展名是否合法
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    try:
-        # 获取上传的文件和用户名
-        file = request.files.get('file')
-        username = request.form.get('username')
-
-        if not file or not username:
-            return jsonify({'success': False, 'error': 'File and username are required'}), 400
-
-        # MD5 加密用户名
-        user_md5 = hashlib.md5(username.encode()).hexdigest()
-
-        # 保存文件到临时路径
-        file_path = f'./tmp/{file.filename}'
-        file.save(file_path)
-
-        # 设置 GitHub Token
-        token = os.getenv('GITHUB_TOKEN')  # 从环境变量中获取 GitHub Token
-
-        # 调用上传至 GitHub 的函数
-        response_status, response_text = upload_to_github(file_path, user_md5, '未分类', file.filename, token)
-        if response_status == 201:
-            download_url = f'https://raw.githubusercontent.com/{os.getenv("GITHUB_USERNAME")}/{os.getenv("GITHUB_REPO")}/main/UserFiles/Files/{user_md5}/未分类/{file.filename}'
-            return jsonify({'success': True, 'downloadUrl': download_url})
-
-        else:
-            return jsonify({'success': False, 'error': f"Upload failed: {response_text}"}), 500
-
-    except Exception as e:
-        # 记录详细错误信息
-        return jsonify({'success': False, 'error': str(e)}), 500
-
+    if 'file' not in request.files:
+        return jsonify({'message': 'No file part'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'message': 'No selected file'}), 400
+    if file and allowed_file(file.filename):
+        # 获取安全的文件名
+        filename = secure_filename(file.filename)
+        # 拼接文件的存储路径
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        # 创建文件夹（如果文件夹不存在的话）
+        if not os.path.exists(app.config['UPLOAD_FOLDER']):
+            os.makedirs(app.config['UPLOAD_FOLDER'])
+        # 保存文件
+        file.save(filepath)
+        return jsonify({'message': 'File uploaded successfully', 'filename': filename}), 200
+    else:
+        return jsonify({'message': 'Invalid file type'}), 400
 
 if __name__ == '__main__':
     app.run(debug=True)
