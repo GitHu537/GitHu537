@@ -1,38 +1,92 @@
-import os
 from flask import Flask, request, jsonify
-from werkzeug.utils import secure_filename
+from hashlib import md5
+import os
+import base64
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+import json
+import requests
+import magic
 
 app = Flask(__name__)
 
-# 设置文件上传目录
-UPLOAD_FOLDER = 'uploads'  # 设置文件存储的文件夹，当前目录下的 uploads 文件夹
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'txt', 'pdf', 'mp4'}  # 可上传的文件类型
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# 从环境变量获取 GitHub 相关信息
+GITHUB_API_URL = os.environ.get('GITHUB_API_URL')
+GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
+REPO_NAME = os.environ.get('REPO_NAME')
 
-# 检查文件扩展名是否合法
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+# 加密文件的密钥（存储在 GitHub Secrets 中）
+SECRET_KEY = os.environ.get('SECRET_KEY')
+
+def encrypt_file(file_data):
+    cipher = AES.new(SECRET_KEY.encode('utf-8'), AES.MODE_CBC)
+    ct_bytes = cipher.encrypt(pad(file_data, AES.block_size))
+    iv = base64.b64encode(cipher.iv).decode('utf-8')
+    ct = base64.b64encode(ct_bytes).decode('utf-8')
+    return iv, ct
+
+def decrypt_file(iv, ct):
+    iv = base64.b64decode(iv)
+    ct = base64.b64decode(ct)
+    cipher = AES.new(SECRET_KEY.encode('utf-8'), AES.MODE_CBC, iv)
+    pt = unpad(cipher.decrypt(ct), AES.block_size)
+    return pt
+
+def get_file_type(file_name):
+    mime = magic.Magic(mime=True)
+    return mime.from_file(file_name)
+
+def upload_to_github(file_path, file_name, folder_path):
+    with open(file_path, 'rb') as f:
+        file_data = f.read()
+    
+    iv, ct = encrypt_file(file_data)
+    encoded_content = json.dumps({
+        'message': 'Upload encrypted file',
+        'content': ct,
+        'sha': None
+    })
+    
+    url = f'{GITHUB_API_URL}/repos/{REPO_NAME}/contents/{folder_path}/{file_name}'
+    
+    response = requests.put(url, headers={'Authorization': f'token {GITHUB_TOKEN}'}, data=encoded_content)
+    
+    return response.json()
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    if 'file' not in request.files:
-        return jsonify({'message': 'No file part'}), 400
+    username = request.form.get('username')
+    if not username:
+        return jsonify({'error': 'Username is required'}), 400
+
     file = request.files['file']
-    if file.filename == '':
-        return jsonify({'message': 'No selected file'}), 400
-    if file and allowed_file(file.filename):
-        # 获取安全的文件名
-        filename = secure_filename(file.filename)
-        # 拼接文件的存储路径
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        # 创建文件夹（如果文件夹不存在的话）
-        if not os.path.exists(app.config['UPLOAD_FOLDER']):
-            os.makedirs(app.config['UPLOAD_FOLDER'])
-        # 保存文件
-        file.save(filepath)
-        return jsonify({'message': 'File uploaded successfully', 'filename': filename}), 200
-    else:
-        return jsonify({'message': 'Invalid file type'}), 400
+    if not file:
+        return jsonify({'error': 'No file uploaded'}), 400
+
+    file_name = file.filename
+    file_type = get_file_type(file_name)
+
+    # 加密后的用户名MD5
+    user_md5 = md5(username.encode('utf-8')).hexdigest()
+
+    # 生成文件夹路径
+    folder_path = f'UserFiles/Files/{user_md5}/{file_type}'
+    
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+
+    file_path = os.path.join(folder_path, file_name)
+
+    file.save(file_path)
+
+    # 上传到 GitHub
+    response = upload_to_github(file_path, file_name, folder_path)
+    
+    if 'content' not in response:
+        return jsonify({'error': 'Failed to upload file to GitHub'}), 500
+    
+    return jsonify({'message': 'File uploaded successfully', 'file_url': response['content']['download_url']})
+
 
 if __name__ == '__main__':
     app.run(debug=True)
