@@ -1,4 +1,0 @@
-Flask==2.1.2
-pycryptodome==3.10.1
-requests==2.27.1
-python-magic==0.4.24
